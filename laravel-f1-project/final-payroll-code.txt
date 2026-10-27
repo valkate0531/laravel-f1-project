@@ -1,0 +1,108 @@
+Controller:
+
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class HumanResourceController extends Controller
+{
+    public function payroll(Request $request)
+    {
+        return $this->calculatePayroll($request);
+    }
+
+    public function employment(Request $request)
+    {
+        return $this->calculatePayroll($request);
+    }
+
+    public function pay(Request $request)
+    {
+        return $this->calculatePayroll($request);
+    }
+
+    public function calculate(Request $request)
+    {
+        return $this->calculatePayroll($request);
+    }
+
+    protected function calculatePayroll(Request $request)
+    {
+        $type = strtolower(trim((string) $request->input('employmentType', '')));
+        $tier = strtolower(trim((string) $request->input('positionTier', '')));
+        $absent = max(0, (float) $request->input('daysAbsent', 0));
+        $late = max(0, (float) $request->input('minutesLate', 0));
+        $ot = max(0, (float) $request->input('overtimeHours', 0));
+
+        if ($type === 'cos' || $type === 'contract of service') {
+            $monthly = 18000.00;
+            $sss = 0.0;
+            $phil = 0.0;
+            $pagibig = 0.0;
+        } elseif ($type === 'regular') {
+            if ($tier === 'senior') {
+                $monthly = 40000.00;
+                $sss = 1800.00;
+                $phil = 1000.00;
+                $pagibig = 200.00;
+            } elseif ($tier === 'junior') {
+                $monthly = 25000.00;
+                $sss = 1125.00;
+                $phil = 625.00;
+                $pagibig = 200.00;
+            } else {
+                return response()->json(['error' => 'Invalid position_tier'], 400);
+            }
+        } else {
+            return response()->json(['error' => 'Invalid employment_type'], 400);
+        }
+
+        $daysPresent = max(0, 22 - $absent);
+        $dailyRate = $monthly / 22.0;
+        $hourlyRate = $dailyRate / 8.0;
+        $lateDeduction = ($hourlyRate / 60.0) * $late;
+        $absentDeduction = $dailyRate * $absent;
+        $overtimePay = $ot * ($hourlyRate * 1.25);
+        $grossPay = $monthly - $lateDeduction - $absentDeduction + $overtimePay;
+        $totalDeduction = $sss + $phil + $pagibig;
+        $netPay = $grossPay - $totalDeduction;
+
+        $r = fn ($value) => round((float) $value, 2);
+
+        return response()->json([
+            'daysAbsent' => $r($absent),
+            'employmentType' => ucfirst($type),
+            'positionTier' => ucfirst($tier),
+            'baseSalary' => $r($monthly),
+            'daysPresent' => $r($daysPresent),
+            'dailyRate' => $r($dailyRate),
+            'lateDeduction' => $r($lateDeduction),
+            'absentDeduction' => $r($absentDeduction),
+            'overtimePay' => $r($overtimePay),
+            'grossPay' => $r($grossPay),
+            'sss' => $r($sss),
+            'philhealth' => $r($phil),
+            'pagibig' => $r($pagibig),
+            'totalDeductions' => $r($totalDeduction),
+            'netPay' => $r($netPay),
+        ]);
+    }
+}
+
+Routes:
+
+<?php
+
+use App\Http\Controllers\HumanResourceController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+Route::post('/payroll', [HumanResourceController::class, 'pay']);
+Route::post('/payroll/calculate', [HumanResourceController::class, 'calculate']);
+Route::post('/calculator', [HumanResourceController::class, 'employment']);
