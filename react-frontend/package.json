@@ -8,9 +8,10 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "axios": "^1.21.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "latest",
     "vite": "latest"
   }
 }
